@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const fileInput = document.getElementById('popup-file-input');
+  const dropZone = document.getElementById('popup-drop-zone');
   const urlInput = document.getElementById('popup-url-input');
   const applyUrlBtn = document.getElementById('popup-apply-url');
   const presetGrid = document.getElementById('popup-preset-grid');
@@ -9,31 +10,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   const resetBtn = document.getElementById('popup-reset');
   const openNewTabBtn = document.getElementById('open-newtab-btn');
 
-  function setStatus(msg) {
+  function setStatus(msg, isError = false) {
     statusEl.textContent = msg;
+    statusEl.classList.toggle('error', Boolean(isError));
   }
 
-  function renderUI(settings) {
-    dimSlider.value = settings.dimLevel ?? 25;
-    dimVal.textContent = `${settings.dimLevel ?? 25}%`;
+  function renderUI(rawSettings) {
+    const settings = sanitizeSettings(rawSettings);
+    dimSlider.value = String(settings.dimLevel);
+    dimVal.textContent = `${settings.dimLevel}%`;
 
     document.querySelectorAll('.preset-item').forEach((item) => {
-      item.classList.toggle('active', item.dataset.id === settings.presetId);
+      const isActive = item.dataset.id === settings.presetId;
+      item.classList.toggle('active', isActive);
+      item.setAttribute('aria-pressed', String(isActive));
     });
   }
 
   function initPresets(activeId) {
-    presetGrid.innerHTML = '';
+    presetGrid.textContent = '';
     PRESETS.forEach((preset) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `preset-item ${preset.id === activeId ? 'active' : ''}`;
+      const isActive = preset.id === activeId;
+      btn.className = `preset-item ${isActive ? 'active' : ''}`;
       btn.dataset.id = preset.id;
+      btn.setAttribute('aria-pressed', String(isActive));
+      btn.title =
+        preset.source === 'local'
+          ? `${preset.name} (Local gradient — offline)`
+          : `${preset.name} (Remote HTTPS image)`;
 
       if (preset.type === 'css') {
         btn.style.backgroundImage = preset.preview;
       } else {
-        btn.style.backgroundImage = `url("${preset.preview}")`;
+        const safePreview = toSafeCssUrl(preset.preview);
+        if (safePreview) btn.style.backgroundImage = safePreview;
       }
 
       const span = document.createElement('span');
@@ -41,66 +53,101 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.appendChild(span);
 
       btn.addEventListener('click', async () => {
-        await saveSettings({
-          wallpaperType: preset.type,
-          wallpaperValue: preset.value,
-          presetId: preset.id
-        });
-        const current = await getSettings();
-        renderUI(current);
-        setStatus(`Applied ${preset.name}`);
+        try {
+          const current = await saveSettings({
+            wallpaperType: preset.type,
+            wallpaperValue: preset.value,
+            presetId: preset.id
+          });
+          renderUI(current);
+          setStatus(`Applied ${preset.name}`);
+        } catch (err) {
+          setStatus(err.message || 'Failed to apply preset', true);
+        }
       });
 
       presetGrid.appendChild(btn);
     });
   }
 
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
   fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
+    const file = e.target.files && e.target.files[0];
+    fileInput.value = '';
+    const check = validateImageFile(file);
+    if (!check.valid) {
+      setStatus(check.error || 'Invalid image file', true);
+      return;
+    }
     setStatus('Uploading image...');
     try {
       const dataUrl = await readFileAsDataURL(file);
-      await saveSettings({
+      const current = await saveSettings({
         wallpaperType: 'data',
         wallpaperValue: dataUrl,
         presetId: null
       });
-      const current = await getSettings();
       renderUI(current);
       setStatus('Custom image saved!');
     } catch (err) {
       console.error(err);
-      setStatus('Failed to load image');
+      setStatus(err.message || 'Failed to load image', true);
     }
   });
 
-  applyUrlBtn.addEventListener('click', async () => {
-    const url = urlInput.value.trim();
-    if (!url) return;
-    await saveSettings({
-      wallpaperType: 'url',
-      wallpaperValue: url,
-      presetId: null
-    });
-    urlInput.value = '';
-    const current = await getSettings();
-    renderUI(current);
-    setStatus('Image URL saved!');
+  async function applyCustomUrl() {
+    const check = validateWallpaperUrl(urlInput.value);
+    if (!check.valid || !check.value) {
+      setStatus(check.error || 'Invalid HTTPS URL', true);
+      return;
+    }
+    try {
+      const current = await saveSettings({
+        wallpaperType: 'url',
+        wallpaperValue: check.value,
+        presetId: null
+      });
+      urlInput.value = '';
+      renderUI(current);
+      setStatus('Image URL saved!');
+    } catch (err) {
+      setStatus(err.message || 'Failed to save URL', true);
+    }
+  }
+
+  applyUrlBtn.addEventListener('click', applyCustomUrl);
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyCustomUrl();
+    }
   });
 
   dimSlider.addEventListener('input', async (e) => {
     const dimLevel = Number(e.target.value);
     dimVal.textContent = `${dimLevel}%`;
-    await saveSettings({ dimLevel });
-    setStatus('Updated dim level');
+    try {
+      await saveSettings({ dimLevel });
+      setStatus('Updated dim level');
+    } catch (err) {
+      setStatus(err.message || 'Failed to update dim level', true);
+    }
   });
 
   resetBtn.addEventListener('click', async () => {
-    await saveSettings(DEFAULT_SETTINGS);
-    const current = await getSettings();
-    renderUI(current);
-    setStatus('Reset to default');
+    try {
+      const current = await resetSettings();
+      renderUI(current);
+      setStatus('Reset to default');
+    } catch (err) {
+      setStatus(err.message || 'Failed to reset settings', true);
+    }
   });
 
   openNewTabBtn.addEventListener('click', () => {
@@ -115,4 +162,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPresets(settings.presetId);
   renderUI(settings);
 });
-
