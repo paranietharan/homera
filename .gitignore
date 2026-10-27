@@ -1,0 +1,19 @@
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Node / Build / Test artifacts
+node_modules/
+coverage/
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# Secrets & Environment
+.env
+.env.*
