@@ -1,16 +1,15 @@
 # Homera
 
-Homera is a **privacy-first Chrome Extension (Manifest V3)** that transforms your browser's New Tab page into a customizable, distraction-free home screen. Personalize your wallpaper using local image uploads, custom HTTPS URLs, or curated presets—complete with adjustable dim, blur, and image fit controls.
+Homera is a **privacy-first, 100% offline Chrome Extension (Manifest V3)** that transforms your browser's New Tab page into a customizable, distraction-free home screen. Personalize your wallpaper using local image uploads or bundled presets—complete with adjustable dim, blur, and image fit controls.
 
 ---
 
 ## Features
 
 - **Local Image Uploads**: Drag-and-drop or browse for local images (`JPG`, `PNG`, `WebP`, `GIF`, `AVIF` up to `10 MB`), stored strictly on your device.
-- **Custom HTTPS Image URLs**: Set any validated `https://` image URL as your wallpaper.
-- **Curated Presets**:
-  - **Local CSS Gradients (Offline, Zero Network Requests)**: *Aurora Night*, *Sunset Dunes*, *Emerald Mist*.
-  - **Remote HTTPS Presets (Unsplash)**: *Alpine Peaks*, *Starry Sky*, *Coastal Calm*.
+- **Bundled Offline Presets**:
+  - **CSS Gradients**: *Aurora Night*, *Sunset Dunes*, *Emerald Mist*.
+  - **Bundled High-Resolution Photos (`assets/presets/`)**: *Alpine Peaks*, *Starry Sky*, *Coastal Calm* — packaged directly inside the extension so wallpapers load instantly offline and never break if an external image host is unavailable.
 - **Appearance Controls**: Real-time sliders for background dim (`0–80%`), backdrop blur (`0–24px`), and image fit (`cover` / `contain`).
 - **One-Click Data Purge**: "Reset to Default" clears custom wallpapers and settings from local storage.
 
@@ -18,13 +17,10 @@ Homera is a **privacy-first Chrome Extension (Manifest V3)** that transforms you
 
 ## Privacy & Security Guarantees
 
-- **Local-First Storage**: All preferences and uploaded wallpapers are stored locally in `chrome.storage.local` (with `localStorage` fallback for standalone web previews).
-- **Zero Telemetry**: Homera contains no analytics, tracking scripts, or third-party SDKs.
-- **Network Transparency**:
-  - Homera makes **zero network requests** when using default or local CSS gradient presets or locally uploaded images.
-  - Selecting a remote preset (*Alpine Peaks*, *Starry Sky*, *Coastal Calm*) or a custom HTTPS image URL causes your browser to fetch that image directly from the image host (`images.unsplash.com` or your specified domain).
-  - The New Tab search bar submits directly to `https://www.google.com/search` via standard HTML form navigation without intercepting or logging queries.
-- **Hardened Input & CSP**: Enforces a strict Manifest V3 Content Security Policy (`default-src 'self'`), disallows `image/svg+xml` uploads to prevent script injection, validates URLs via `new URL()`, and escapes all CSS `url(...)` values.
+- **100% Local & Offline**: All preset images are bundled inside the extension package (`assets/presets/*.jpg`), and all user preferences and uploaded wallpapers are stored locally in `chrome.storage.local` (with `localStorage` fallback for standalone web previews).
+- **Zero Background Network Requests & Zero Telemetry**: Opening a New Tab makes **zero external network requests** and contains no analytics, tracking scripts, or third-party SDKs.
+- **Direct Search Navigation**: The New Tab search bar submits directly to `https://www.google.com/search` via standard HTML form navigation when you submit a query, without intercepting or logging searches.
+- **Hardened Input & CSP**: Enforces a strict Manifest V3 Content Security Policy (`default-src 'self'; img-src 'self' data: blob:`), disallows `image/svg+xml` uploads to prevent script injection, validates preset asset paths against an explicit allowlist, and escapes all CSS `url(...)` values.
 
 ---
 
@@ -43,10 +39,10 @@ Homera is a **privacy-first Chrome Extension (Manifest V3)** that transforms you
 Homera uses zero third-party runtime dependencies and runs automated unit and manifest validation tests using Node.js (`>=18`):
 
 ```bash
-# Run unit tests (URL/file validation, CSS escaping, schema sanitization, storage adapter)
+# Run unit tests (local asset/file validation, CSS escaping, schema sanitization, storage adapter)
 npm test
 
-# Validate manifest.json, CSP invariants, and JavaScript syntax
+# Validate manifest.json, CSP invariants, bundled preset assets, and JavaScript syntax
 npm run validate
 ```
 

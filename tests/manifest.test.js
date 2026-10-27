@@ -17,6 +17,7 @@ test('manifest.json complies with Manifest V3, least-privilege permissions, and 
   const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages;
   assert.ok(csp, 'content_security_policy.extension_pages must be defined');
   assert.ok(csp.includes("default-src 'self'"), 'CSP must restrict default-src to self');
+  assert.ok(csp.includes("img-src 'self' data: blob:;"), 'CSP must restrict img-src to local/data/blob sources');
   assert.ok(csp.includes("object-src 'none'"), 'CSP must disable object-src');
   assert.equal(csp.includes('unsafe-eval'), false, 'CSP must never allow unsafe-eval');
 

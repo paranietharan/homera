@@ -13,8 +13,7 @@ Homera is built on **privacy by default** and **local-first** ownership of user 
 
 ## 3. External Network Requests
 - Document every external network request in project documentation.
-- Avoid loading remote fonts, tracking pixels, or unrequested third-party CDNs on every New Tab open.
-- When remote wallpaper presets or feeds are offered, clearly distinguish between **local/bundled presets** (zero network requests) and **remote image URLs** (which expose the user's IP address to the image host).
+- Avoid loading remote fonts, remote wallpaper URLs, tracking pixels, or unrequested third-party CDNs on New Tab open. Bundle all preset wallpapers locally (`assets/presets/`) so the extension makes zero background network requests and works 100% offline even if external image hosts go down.
 
 ## 4. Prohibition on Unauthorized Data Collection
 - Never collect, sell, or transmit personal data, uploaded images, or usage telemetry to external servers without:

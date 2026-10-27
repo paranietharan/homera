@@ -4,8 +4,8 @@
  * @typedef {Object} WallpaperPreset
  * @property {string} id
  * @property {string} name
- * @property {'css' | 'url'} type
- * @property {'local' | 'remote'} source
+ * @property {'css' | 'image'} type
+ * @property {'local'} source
  * @property {string} value
  * @property {string} preview
  */
@@ -13,7 +13,7 @@
 /**
  * @typedef {Object} WallpaperSettings
  * @property {number} schemaVersion
- * @property {'css' | 'url' | 'data'} wallpaperType
+ * @property {'css' | 'image' | 'data'} wallpaperType
  * @property {string} wallpaperValue
  * @property {string | null} presetId
  * @property {number} dimLevel
@@ -28,7 +28,7 @@
  * @property {string} [error]
  */
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'homera_settings';
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -71,31 +71,35 @@ const PRESETS = Object.freeze([
   {
     id: 'alpine-peaks',
     name: 'Alpine Peaks',
-    type: 'url',
-    source: 'remote',
-    value: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=85',
-    preview: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=70'
+    type: 'image',
+    source: 'local',
+    value: 'assets/presets/alpine-peaks.jpg',
+    preview: 'assets/presets/alpine-peaks.jpg'
   },
   {
     id: 'starry-sky',
     name: 'Starry Sky',
-    type: 'url',
-    source: 'remote',
-    value: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=2000&q=85',
-    preview: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=400&q=70'
+    type: 'image',
+    source: 'local',
+    value: 'assets/presets/starry-sky.jpg',
+    preview: 'assets/presets/starry-sky.jpg'
   },
   {
     id: 'coastal-calm',
     name: 'Coastal Calm',
-    type: 'url',
-    source: 'remote',
-    value: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=85',
-    preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=70'
+    type: 'image',
+    source: 'local',
+    value: 'assets/presets/coastal-calm.jpg',
+    preview: 'assets/presets/coastal-calm.jpg'
   }
 ]);
 
 const ALLOWED_CSS_GRADIENTS = new Set(
   PRESETS.filter((p) => p.type === 'css').flatMap((p) => [p.value, p.preview])
+);
+
+const ALLOWED_LOCAL_ASSETS = new Set(
+  PRESETS.filter((p) => p.type === 'image').flatMap((p) => [p.value, p.preview])
 );
 
 /** @type {Readonly<WallpaperSettings>} */
@@ -110,34 +114,20 @@ const DEFAULT_SETTINGS = Object.freeze({
 });
 
 /**
- * Validates an external wallpaper URL (must be valid HTTPS without credentials or control chars).
- * @param {unknown} rawUrl
+ * Validates that a local asset path matches the explicit bundled preset allowlist.
+ * Rejects external URLs, path traversal, or unknown files.
+ * @param {unknown} rawPath
  * @returns {ValidationResult}
  */
-function validateWallpaperUrl(rawUrl) {
-  if (typeof rawUrl !== 'string') {
-    return { valid: false, error: 'URL must be a string' };
+function validateLocalAssetPath(rawPath) {
+  if (typeof rawPath !== 'string') {
+    return { valid: false, error: 'Asset path must be a string' };
   }
-  const trimmed = rawUrl.trim();
-  if (!trimmed) {
-    return { valid: false, error: 'Please enter an image URL' };
+  const trimmed = rawPath.trim();
+  if (!ALLOWED_LOCAL_ASSETS.has(trimmed)) {
+    return { valid: false, error: 'Only bundled local preset images are allowed' };
   }
-  if (/[\u0000-\u001F\u007F]/.test(trimmed)) {
-    return { valid: false, error: 'URL contains invalid control characters' };
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== 'https:') {
-      return { valid: false, error: 'Only HTTPS image URLs are allowed' };
-    }
-    if (parsed.username || parsed.password) {
-      return { valid: false, error: 'URLs with embedded credentials are not allowed' };
-    }
-    return { valid: true, value: parsed.href };
-  } catch {
-    return { valid: false, error: 'Please enter a valid HTTPS URL' };
-  }
+  return { valid: true, value: trimmed };
 }
 
 /**
@@ -189,17 +179,17 @@ function validateImageFile(file) {
 }
 
 /**
- * Escapes and formats a validated URL or data URL into a safe CSS `url("...")` value.
+ * Escapes and formats a validated bundled local asset path or data URL into a safe CSS `url("...")` value.
  * Returns null if the input fails validation.
- * @param {unknown} rawUrlOrData
+ * @param {unknown} rawAssetOrData
  * @returns {string | null}
  */
-function toSafeCssUrl(rawUrlOrData) {
-  if (typeof rawUrlOrData !== 'string') return null;
-  const trimmed = rawUrlOrData.trim();
+function toSafeCssUrl(rawAssetOrData) {
+  if (typeof rawAssetOrData !== 'string') return null;
+  const trimmed = rawAssetOrData.trim();
   const check = trimmed.startsWith('data:')
     ? validateDataImageUrl(trimmed)
-    : validateWallpaperUrl(trimmed);
+    : validateLocalAssetPath(trimmed);
 
   if (!check.valid || !check.value) {
     return null;
@@ -225,7 +215,8 @@ function clampNumber(value, min, max, fallback) {
 
 /**
  * Sanitizes and migrates untrusted settings read from storage.
- * Guarantees a safe fallback wallpaper if stored state is corrupted or invalid.
+ * Automatically migrates legacy v1 preset URLs to bundled local preset assets,
+ * and falls back safely to the default CSS gradient if stored state is invalid.
  * @param {unknown} raw
  * @returns {WallpaperSettings}
  */
@@ -238,14 +229,14 @@ function sanitizeSettings(raw) {
     ? /** @type {'cover' | 'contain'} */ (input.fitMode)
     : DEFAULT_SETTINGS.fitMode;
 
-  const presetId =
-    typeof input.presetId === 'string' && PRESETS.some((p) => p.id === input.presetId)
-      ? input.presetId
+  const matchedPreset =
+    typeof input.presetId === 'string'
+      ? PRESETS.find((p) => p.id === input.presetId) || null
       : null;
 
   let wallpaperType = DEFAULT_SETTINGS.wallpaperType;
   let wallpaperValue = DEFAULT_SETTINGS.wallpaperValue;
-  let resolvedPresetId = presetId;
+  let resolvedPresetId = matchedPreset ? matchedPreset.id : null;
 
   if (input.wallpaperType === 'css' && typeof input.wallpaperValue === 'string') {
     if (ALLOWED_CSS_GRADIENTS.has(input.wallpaperValue)) {
@@ -254,14 +245,19 @@ function sanitizeSettings(raw) {
     } else {
       resolvedPresetId = DEFAULT_SETTINGS.presetId;
     }
-  } else if (input.wallpaperType === 'url') {
-    const check = validateWallpaperUrl(input.wallpaperValue);
+  } else if (input.wallpaperType === 'image') {
+    const check = validateLocalAssetPath(input.wallpaperValue);
     if (check.valid && check.value) {
-      wallpaperType = 'url';
+      wallpaperType = 'image';
       wallpaperValue = check.value;
     } else {
       resolvedPresetId = DEFAULT_SETTINGS.presetId;
     }
+  } else if (input.wallpaperType === 'url' && matchedPreset && matchedPreset.type === 'image') {
+    // Migrate legacy v1 remote preset URL to bundled local preset image
+    wallpaperType = 'image';
+    wallpaperValue = matchedPreset.value;
+    resolvedPresetId = matchedPreset.id;
   } else if (input.wallpaperType === 'data') {
     const check = validateDataImageUrl(input.wallpaperValue);
     if (check.valid && check.value) {
@@ -438,7 +434,7 @@ const Homera = Object.freeze({
   ALLOWED_FIT_MODES,
   PRESETS,
   DEFAULT_SETTINGS,
-  validateWallpaperUrl,
+  validateLocalAssetPath,
   validateDataImageUrl,
   validateImageFile,
   toSafeCssUrl,

@@ -11,8 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const fileInput = document.getElementById('file-upload');
   const dropZone = document.getElementById('drop-zone');
-  const urlInput = document.getElementById('url-input');
-  const applyUrlBtn = document.getElementById('apply-url-btn');
   const presetGrid = document.getElementById('preset-grid');
 
   const dimSlider = document.getElementById('dim-slider');
@@ -98,9 +96,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.dataset.id = preset.id;
       card.setAttribute('aria-pressed', String(isActive));
       card.title =
-        preset.source === 'local'
+        preset.type === 'css'
           ? `${preset.name} (Local gradient — offline)`
-          : `${preset.name} (Remote HTTPS image)`;
+          : `${preset.name} (Bundled photo — offline)`;
 
       if (preset.type === 'css') {
         card.style.backgroundImage = preset.preview;
@@ -183,34 +181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   dropZone.addEventListener('drop', (e) => {
     const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (file) handleFileSelect(file);
-  });
-
-  async function applyCustomUrl() {
-    const check = validateWallpaperUrl(urlInput.value);
-    if (!check.valid || !check.value) {
-      showStatus(check.error || 'Invalid HTTPS URL', true);
-      return;
-    }
-    try {
-      const full = await saveSettings({
-        wallpaperType: 'url',
-        wallpaperValue: check.value,
-        presetId: null
-      });
-      renderWallpaper(full);
-      urlInput.value = '';
-      showStatus('Custom URL applied!');
-    } catch (err) {
-      showStatus(err.message || 'Failed to save URL', true);
-    }
-  }
-
-  applyUrlBtn.addEventListener('click', applyCustomUrl);
-  urlInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      applyCustomUrl();
-    }
   });
 
   dimSlider.addEventListener('input', async (e) => {

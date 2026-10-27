@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const fileInput = document.getElementById('popup-file-input');
   const dropZone = document.getElementById('popup-drop-zone');
-  const urlInput = document.getElementById('popup-url-input');
-  const applyUrlBtn = document.getElementById('popup-apply-url');
   const presetGrid = document.getElementById('popup-preset-grid');
   const dimSlider = document.getElementById('popup-dim-slider');
   const dimVal = document.getElementById('popup-dim-val');
@@ -37,9 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.dataset.id = preset.id;
       btn.setAttribute('aria-pressed', String(isActive));
       btn.title =
-        preset.source === 'local'
+        preset.type === 'css'
           ? `${preset.name} (Local gradient — offline)`
-          : `${preset.name} (Remote HTTPS image)`;
+          : `${preset.name} (Bundled photo — offline)`;
 
       if (preset.type === 'css') {
         btn.style.backgroundImage = preset.preview;
@@ -98,34 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error(err);
       setStatus(err.message || 'Failed to load image', true);
-    }
-  });
-
-  async function applyCustomUrl() {
-    const check = validateWallpaperUrl(urlInput.value);
-    if (!check.valid || !check.value) {
-      setStatus(check.error || 'Invalid HTTPS URL', true);
-      return;
-    }
-    try {
-      const current = await saveSettings({
-        wallpaperType: 'url',
-        wallpaperValue: check.value,
-        presetId: null
-      });
-      urlInput.value = '';
-      renderUI(current);
-      setStatus('Image URL saved!');
-    } catch (err) {
-      setStatus(err.message || 'Failed to save URL', true);
-    }
-  }
-
-  applyUrlBtn.addEventListener('click', applyCustomUrl);
-  urlInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      applyCustomUrl();
     }
   });
 
