@@ -435,3 +435,23 @@ input[type="range"] {
   color: #34d399;
 }
 
+.status-msg.error {
+  color: #f87171;
+}
+
+button:focus-visible,
+input:focus-visible,
+.upload-zone:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+

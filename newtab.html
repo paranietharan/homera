@@ -18,7 +18,7 @@
     </div>
 
     <form id="search-form" class="search-bar" action="https://www.google.com/search" method="GET">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="11" cy="11" r="8"></circle>
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
@@ -26,14 +26,21 @@
         type="text"
         name="q"
         id="search-input"
+        aria-label="Search Google or type a query"
         placeholder="Search Google or type a query..."
         autocomplete="off"
       />
     </form>
   </main>
 
-  <button id="open-settings-btn" class="floating-settings-btn" title="Change Wallpaper">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+  <button
+    id="open-settings-btn"
+    class="floating-settings-btn"
+    title="Change Wallpaper"
+    aria-expanded="false"
+    aria-controls="settings-drawer"
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
       <circle cx="8.5" cy="8.5" r="1.5"></circle>
       <polyline points="21 15 16 10 5 21"></polyline>
@@ -41,7 +48,7 @@
     <span>Customize Wallpaper</span>
   </button>
 
-  <aside id="settings-drawer" class="settings-drawer hidden" aria-hidden="true">
+  <aside id="settings-drawer" class="settings-drawer hidden" aria-hidden="true" aria-label="Wallpaper Settings">
     <div class="drawer-header">
       <div class="brand">
         <img src="icon.png" alt="Homera Logo" class="brand-logo" />
@@ -50,8 +57,8 @@
           <p>Wallpaper Studio</p>
         </div>
       </div>
-      <button id="close-settings-btn" class="icon-btn" title="Close">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+      <button id="close-settings-btn" class="icon-btn" title="Close (Esc)" aria-label="Close Wallpaper Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -61,23 +68,28 @@
     <div class="drawer-body">
       <section class="control-section">
         <label class="section-title">Select Image From Computer</label>
-        <label for="file-upload" class="upload-zone" id="drop-zone">
-          <input type="file" id="file-upload" accept="image/*" hidden />
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
+        <label for="file-upload" class="upload-zone" id="drop-zone" tabindex="0">
+          <input
+            type="file"
+            id="file-upload"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            hidden
+          />
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          <span class="upload-title">Choose an image or drag & drop</span>
-          <span class="upload-hint">Supports JPG, PNG, WebP, GIF</span>
+          <span class="upload-title">Choose an image or drag &amp; drop</span>
+          <span class="upload-hint">Supports JPG, PNG, WebP, GIF, AVIF (max 10 MB)</span>
         </label>
       </section>
 
       <section class="control-section">
-        <label class="section-title">Image URL</label>
+        <label for="url-input" class="section-title">Image URL (HTTPS)</label>
         <div class="url-input-group">
           <input type="url" id="url-input" placeholder="https://example.com/wallpaper.jpg" />
-          <button id="apply-url-btn" class="primary-btn">Apply</button>
+          <button id="apply-url-btn" type="button" class="primary-btn">Apply</button>
         </div>
       </section>
 
@@ -90,7 +102,7 @@
         <label class="section-title">Appearance Adjustments</label>
         <div class="slider-row">
           <div class="slider-label">
-            <span>Background Dim</span>
+            <label for="dim-slider">Background Dim</label>
             <span id="dim-val">25%</span>
           </div>
           <input type="range" id="dim-slider" min="0" max="80" value="25" />
@@ -98,7 +110,7 @@
 
         <div class="slider-row">
           <div class="slider-label">
-            <span>Backdrop Blur</span>
+            <label for="blur-slider">Backdrop Blur</label>
             <span id="blur-val">0px</span>
           </div>
           <input type="range" id="blur-slider" min="0" max="24" value="0" />
@@ -108,7 +120,7 @@
           <div class="slider-label">
             <span>Image Fit</span>
           </div>
-          <div class="segmented-control">
+          <div class="segmented-control" role="group" aria-label="Image Fit">
             <button type="button" data-fit="cover" class="fit-btn active">Fill (Cover)</button>
             <button type="button" data-fit="contain" class="fit-btn">Fit (Contain)</button>
           </div>
@@ -117,8 +129,8 @@
     </div>
 
     <div class="drawer-footer">
-      <button id="reset-btn" class="secondary-btn">Reset to Default</button>
-      <span id="status-msg" class="status-msg"></span>
+      <button id="reset-btn" type="button" class="secondary-btn">Reset to Default</button>
+      <span id="status-msg" class="status-msg" role="status" aria-live="polite"></span>
     </div>
   </aside>
 
@@ -126,4 +138,3 @@
   <script src="newtab.js"></script>
 </body>
 </html>
-

@@ -26,9 +26,13 @@ Organize code into four distinct layers with strict one-way dependencies (`UI ->
 - Define explicit default configurations and validation schemas for every setting key.
 - Decouple **wallpaper metadata** (source type, fit, blur, dim, active preset ID) from **wallpaper binary data** (stored by asset reference/key in `IndexedDB` or `chrome.storage.local`) so users can switch between multiple uploaded images without re-uploading or serializing huge Base64 strings on every setting read.
 
-## 4. Progressive Build & Directory Scalability
-- Keep zero-build simplicity while the codebase is small, using native ES Modules (`<script type="module">`).
-- As modules grow, structure files under `src/`:
+## 4. Current File Layout & Progressive Scaling
+- **Current Layout (Zero-Build Root Files)**:
+  - `wallpaper.js` — Shared Domain + Storage + Browser Platform Adapter layer (`globalThis.Homera` & CommonJS export for `node --test`). Using a classic script with a clean namespace ensures compatibility across Chrome Extension views, `file://` local previews, and Node.js tests without a bundler.
+  - `newtab.js` / `newtab.html` / `newtab.css` — New Tab UI layer.
+  - `popup.js` / `popup.html` / `popup.css` — Toolbar Popup UI layer.
+  - `tests/` — Automated Node.js unit and validation tests.
+- **Progressive Directory Scaling**: As additional features (`clock`, `search`, `widgets`) are introduced, split modules under `src/`:
   - `src/platform/` — Browser API adapters
   - `src/storage/` — Settings & asset storage + schema migrations
   - `src/domain/` — Validation, presets, and feature logic

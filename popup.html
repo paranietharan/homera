@@ -14,15 +14,20 @@
         <p>Home Page Wallpaper</p>
       </div>
     </div>
-    <button id="open-newtab-btn" class="newtab-btn" title="Open New Tab">New Tab ↗</button>
+    <button id="open-newtab-btn" type="button" class="newtab-btn" title="Open New Tab">New Tab ↗</button>
   </header>
 
   <main class="popup-body">
     <section class="section">
       <label class="section-label">Select Image</label>
-      <label for="popup-file-input" class="upload-box" id="popup-drop-zone">
-        <input type="file" id="popup-file-input" accept="image/*" hidden />
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+      <label for="popup-file-input" class="upload-box" id="popup-drop-zone" tabindex="0">
+        <input
+          type="file"
+          id="popup-file-input"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          hidden
+        />
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="17 8 12 3 7 8"></polyline>
           <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -32,10 +37,10 @@
     </section>
 
     <section class="section">
-      <label class="section-label">Or Paste Image URL</label>
+      <label for="popup-url-input" class="section-label">Or Paste Image URL (HTTPS)</label>
       <div class="url-row">
         <input type="url" id="popup-url-input" placeholder="https://example.com/photo.jpg" />
-        <button id="popup-apply-url" class="apply-btn">Set</button>
+        <button id="popup-apply-url" type="button" class="apply-btn">Set</button>
       </div>
     </section>
 
@@ -46,7 +51,7 @@
 
     <section class="section">
       <div class="slider-header">
-        <span class="section-label">Dim Overlay</span>
+        <label for="popup-dim-slider" class="section-label">Dim Overlay</label>
         <span id="popup-dim-val" class="slider-val">25%</span>
       </div>
       <input type="range" id="popup-dim-slider" min="0" max="80" value="25" />
@@ -54,12 +59,11 @@
   </main>
 
   <footer class="popup-footer">
-    <span id="popup-status" class="status-text">Ready</span>
-    <button id="popup-reset" class="reset-link">Reset Default</button>
+    <span id="popup-status" class="status-text" role="status" aria-live="polite">Ready</span>
+    <button id="popup-reset" type="button" class="reset-link">Reset Default</button>
   </footer>
 
   <script src="wallpaper.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
-

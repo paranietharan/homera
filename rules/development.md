@@ -24,9 +24,10 @@ These standards govern code quality, UI accessibility, testing, and documentatio
 - Ensure readable contrast over dynamic wallpapers using configurable dim overlays and text shadows.
 - Respect `prefers-reduced-motion: reduce` for transitions and blur animations.
 
-## 5. Testing Expectations
-- Any change to settings validation, URL sanitization, migration logic, or storage adapters must include automated unit tests (or reproducible verification scripts until a test runner is configured).
-- Manually verify both **New Tab (`newtab.html`)** and **Toolbar Popup (`popup.html`)** flows in Chrome before completing work.
+## 5. Testing & Verification Expectations
+- Any change to settings validation, URL sanitization, migration logic, or storage adapters must include automated unit tests in `tests/` using Node's built-in test runner (`npm test`).
+- Run `npm run validate` to verify `manifest.json`, CSP rules, and JS syntax before finishing any task.
+- Manually verify both **New Tab (`newtab.html`)** and **Toolbar Popup (`popup.html`)** flows in Chrome when modifying UI interactions.
 
 ## 6. Documentation & Commit Standards
 - Follow Conventional Commits as defined in [`commit-rule.md`](./commit-rule.md).

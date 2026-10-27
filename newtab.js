@@ -23,11 +23,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const resetBtn = document.getElementById('reset-btn');
   const statusMsg = document.getElementById('status-msg');
 
-  function showStatus(text) {
+  let statusTimer = null;
+
+  function showStatus(text, isError = false) {
     statusMsg.textContent = text;
-    setTimeout(() => {
-      if (statusMsg.textContent === text) statusMsg.textContent = '';
-    }, 2200);
+    statusMsg.classList.toggle('error', Boolean(isError));
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      if (statusMsg.textContent === text) {
+        statusMsg.textContent = '';
+        statusMsg.classList.remove('error');
+      }
+    }, 3000);
   }
 
   function updateClock() {
@@ -48,44 +55,58 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateClock();
   setInterval(updateClock, 10000);
 
-  function renderWallpaper(settings) {
+  function renderWallpaper(rawSettings) {
+    const settings = sanitizeSettings(rawSettings);
+
     if (settings.wallpaperType === 'css') {
       wallpaperLayer.style.backgroundImage = settings.wallpaperValue;
-    } else if (settings.wallpaperValue) {
-      wallpaperLayer.style.backgroundImage = `url("${settings.wallpaperValue}")`;
+    } else {
+      const safeCssUrl = toSafeCssUrl(settings.wallpaperValue);
+      wallpaperLayer.style.backgroundImage = safeCssUrl || DEFAULT_SETTINGS.wallpaperValue;
     }
 
-    wallpaperLayer.style.backgroundSize = settings.fitMode || 'cover';
-    wallpaperLayer.style.filter = `blur(${settings.blurLevel || 0}px)`;
-    wallpaperOverlay.style.background = `rgba(2, 6, 23, ${(settings.dimLevel ?? 25) / 100})`;
+    wallpaperLayer.style.backgroundSize = settings.fitMode;
+    wallpaperLayer.style.filter = `blur(${settings.blurLevel}px)`;
+    wallpaperOverlay.style.background = `rgba(2, 6, 23, ${settings.dimLevel / 100})`;
 
-    dimSlider.value = settings.dimLevel ?? 25;
-    dimVal.textContent = `${settings.dimLevel ?? 25}%`;
+    dimSlider.value = String(settings.dimLevel);
+    dimVal.textContent = `${settings.dimLevel}%`;
 
-    blurSlider.value = settings.blurLevel ?? 0;
-    blurVal.textContent = `${settings.blurLevel ?? 0}px`;
+    blurSlider.value = String(settings.blurLevel);
+    blurVal.textContent = `${settings.blurLevel}px`;
 
     fitBtns.forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.fit === (settings.fitMode || 'cover'));
+      const isActive = btn.dataset.fit === settings.fitMode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
     });
 
     document.querySelectorAll('.preset-card').forEach((card) => {
-      card.classList.toggle('active', card.dataset.id === settings.presetId);
+      const isActive = card.dataset.id === settings.presetId;
+      card.classList.toggle('active', isActive);
+      card.setAttribute('aria-pressed', String(isActive));
     });
   }
 
   function buildPresets(activePresetId) {
-    presetGrid.innerHTML = '';
+    presetGrid.textContent = '';
     PRESETS.forEach((preset) => {
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = `preset-card ${preset.id === activePresetId ? 'active' : ''}`;
+      const isActive = preset.id === activePresetId;
+      card.className = `preset-card ${isActive ? 'active' : ''}`;
       card.dataset.id = preset.id;
+      card.setAttribute('aria-pressed', String(isActive));
+      card.title =
+        preset.source === 'local'
+          ? `${preset.name} (Local gradient — offline)`
+          : `${preset.name} (Remote HTTPS image)`;
 
       if (preset.type === 'css') {
         card.style.backgroundImage = preset.preview;
       } else {
-        card.style.backgroundImage = `url("${preset.preview}")`;
+        const safePreview = toSafeCssUrl(preset.preview);
+        if (safePreview) card.style.backgroundImage = safePreview;
       }
 
       const label = document.createElement('span');
@@ -93,15 +114,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.appendChild(label);
 
       card.addEventListener('click', async () => {
-        const updated = {
-          wallpaperType: preset.type,
-          wallpaperValue: preset.value,
-          presetId: preset.id
-        };
-        await saveSettings(updated);
-        const full = await getSettings();
-        renderWallpaper(full);
-        showStatus(`Applied ${preset.name}`);
+        try {
+          const full = await saveSettings({
+            wallpaperType: preset.type,
+            wallpaperValue: preset.value,
+            presetId: preset.id
+          });
+          renderWallpaper(full);
+          showStatus(`Applied ${preset.name}`);
+        } catch (err) {
+          showStatus(err.message || 'Failed to apply preset', true);
+        }
       });
 
       presetGrid.appendChild(card);
@@ -109,30 +132,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function handleFileSelect(file) {
-    if (!file || !file.type.startsWith('image/')) {
-      showStatus('Please choose an image file');
+    const fileCheck = validateImageFile(file);
+    if (!fileCheck.valid) {
+      showStatus(fileCheck.error || 'Invalid image file', true);
       return;
     }
     try {
       showStatus('Loading image...');
       const dataUrl = await readFileAsDataURL(file);
-      await saveSettings({
+      const full = await saveSettings({
         wallpaperType: 'data',
         wallpaperValue: dataUrl,
         presetId: null
       });
-      const full = await getSettings();
       renderWallpaper(full);
       showStatus('Wallpaper updated!');
-    } catch (e) {
-      console.error('Failed to read image file:', e);
-      showStatus('Error loading image');
+    } catch (err) {
+      console.error('Failed to read or save image file:', err);
+      showStatus(err.message || 'Error loading image', true);
     }
   }
 
   fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (file) handleFileSelect(file);
+    fileInput.value = '';
+  });
+
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
   });
 
   ['dragenter', 'dragover'].forEach((evt) => {
@@ -150,62 +181,100 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   dropZone.addEventListener('drop', (e) => {
-    const file = e.dataTransfer.files[0];
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (file) handleFileSelect(file);
   });
 
-  applyUrlBtn.addEventListener('click', async () => {
-    const url = urlInput.value.trim();
-    if (!url) return;
-    await saveSettings({
-      wallpaperType: 'url',
-      wallpaperValue: url,
-      presetId: null
-    });
-    const full = await getSettings();
-    renderWallpaper(full);
-    urlInput.value = '';
-    showStatus('Custom URL applied!');
+  async function applyCustomUrl() {
+    const check = validateWallpaperUrl(urlInput.value);
+    if (!check.valid || !check.value) {
+      showStatus(check.error || 'Invalid HTTPS URL', true);
+      return;
+    }
+    try {
+      const full = await saveSettings({
+        wallpaperType: 'url',
+        wallpaperValue: check.value,
+        presetId: null
+      });
+      renderWallpaper(full);
+      urlInput.value = '';
+      showStatus('Custom URL applied!');
+    } catch (err) {
+      showStatus(err.message || 'Failed to save URL', true);
+    }
+  }
+
+  applyUrlBtn.addEventListener('click', applyCustomUrl);
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyCustomUrl();
+    }
   });
 
   dimSlider.addEventListener('input', async (e) => {
     const dimLevel = Number(e.target.value);
     dimVal.textContent = `${dimLevel}%`;
     wallpaperOverlay.style.background = `rgba(2, 6, 23, ${dimLevel / 100})`;
-    await saveSettings({ dimLevel });
+    try {
+      await saveSettings({ dimLevel });
+    } catch (err) {
+      showStatus(err.message || 'Failed to save dim level', true);
+    }
   });
 
   blurSlider.addEventListener('input', async (e) => {
     const blurLevel = Number(e.target.value);
     blurVal.textContent = `${blurLevel}px`;
     wallpaperLayer.style.filter = `blur(${blurLevel}px)`;
-    await saveSettings({ blurLevel });
+    try {
+      await saveSettings({ blurLevel });
+    } catch (err) {
+      showStatus(err.message || 'Failed to save blur level', true);
+    }
   });
 
   fitBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
       const fitMode = btn.dataset.fit;
-      await saveSettings({ fitMode });
-      const full = await getSettings();
-      renderWallpaper(full);
+      try {
+        const full = await saveSettings({ fitMode });
+        renderWallpaper(full);
+      } catch (err) {
+        showStatus(err.message || 'Failed to save fit mode', true);
+      }
     });
   });
 
   resetBtn.addEventListener('click', async () => {
-    await saveSettings(DEFAULT_SETTINGS);
-    const full = await getSettings();
-    renderWallpaper(full);
-    showStatus('Reset to default');
+    try {
+      const full = await resetSettings();
+      renderWallpaper(full);
+      showStatus('Reset to default');
+    } catch (err) {
+      showStatus(err.message || 'Failed to reset settings', true);
+    }
   });
 
-  openBtn.addEventListener('click', () => {
-    drawer.classList.remove('hidden');
-    drawer.setAttribute('aria-hidden', 'false');
-  });
+  function setDrawerOpen(isOpen) {
+    drawer.classList.toggle('hidden', !isOpen);
+    drawer.setAttribute('aria-hidden', String(!isOpen));
+    openBtn.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
+      closeBtn.focus();
+    } else {
+      openBtn.focus();
+    }
+  }
 
-  closeBtn.addEventListener('click', () => {
-    drawer.classList.add('hidden');
-    drawer.setAttribute('aria-hidden', 'true');
+  openBtn.addEventListener('click', () => setDrawerOpen(true));
+  closeBtn.addEventListener('click', () => setDrawerOpen(false));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !drawer.classList.contains('hidden')) {
+      setDrawerOpen(false);
+    }
   });
 
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
@@ -219,4 +288,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildPresets(initialSettings.presetId);
   renderWallpaper(initialSettings);
 });
-

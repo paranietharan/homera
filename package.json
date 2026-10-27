@@ -1,0 +1,13 @@
+{
+  "name": "homera",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Privacy-first Chrome Extension for New Tab wallpaper and home-screen customization.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "validate": "node --check wallpaper.js && node --check newtab.js && node --check popup.js && node --test tests/manifest.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

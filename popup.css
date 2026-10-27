@@ -208,6 +208,10 @@ input[type="range"] {
   color: #34d399;
 }
 
+.status-text.error {
+  color: #f87171;
+}
+
 .reset-link {
   background: none;
   border: none;
@@ -219,5 +223,21 @@ input[type="range"] {
 
 .reset-link:hover {
   color: var(--text);
+}
+
+button:focus-visible,
+input:focus-visible,
+.upload-box:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
