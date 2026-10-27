@@ -108,41 +108,6 @@ body {
   background: rgba(139, 92, 246, 0.1);
 }
 
-.url-row {
-  display: flex;
-  gap: 6px;
-}
-
-.url-row input {
-  flex: 1;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  color: var(--text);
-  font-size: 0.8rem;
-  outline: none;
-}
-
-.url-row input:focus {
-  border-color: var(--accent);
-}
-
-.apply-btn {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.apply-btn:hover {
-  background: var(--accent-hover);
-}
-
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

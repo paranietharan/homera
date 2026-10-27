@@ -21,6 +21,6 @@
     "unlimitedStorage"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    "extension_pages": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
   }
 }

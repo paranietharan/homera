@@ -3,14 +3,14 @@
 Homera handles user-supplied files, external image URLs, and browser extension APIs. Every contributor and agent must enforce these security baselines.
 
 ## 1. Untrusted Input Validation & Sanitization
-- Treat all user input, uploaded files, URLs, stored settings, and extension messages as untrusted.
-- **URL Validation**: Parse external URLs with `new URL()` and explicitly allowlist `https:` (or `data:image/*` for validated local uploads). Reject `javascript:`, `data:text/html`, `file:`, `vbscript:`, and malformed schemes.
-- **CSS Injection Prevention**: Never interpolate raw user strings directly into `style.backgroundImage = url("${rawInput}")` or inline style attributes without escaping quotes, parentheses, and control characters, or constructing a validated `URL` / `Blob` object URL.
-- **File Uploads**: Verify both the MIME type (`image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/avif`) and file size before reading or persisting uploads. Avoid rendering untrusted `image/svg+xml` directly in an execution context.
+- Treat all user input, uploaded files, asset paths, stored settings, and extension messages as untrusted.
+- **Asset & Data URL Validation**: Preset images must be bundled locally under `assets/presets/` and validated against an explicit allowlist (`validateLocalAssetPath`). Local uploads must be validated against the raster `data:image/*` allowlist (`validateDataImageUrl`). Reject external URLs, `javascript:`, `data:text/html`, `data:image/svg+xml`, `file:`, `vbscript:`, and path traversal sequences.
+- **CSS Injection Prevention**: Never interpolate raw strings directly into `style.backgroundImage = url("${rawInput}")` or inline style attributes without `toSafeCssUrl()` validation and escaping.
+- **File Uploads**: Verify both the MIME type (`image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/avif`) and file size (`<= 10 MB`) before reading or persisting uploads. Avoid rendering untrusted `image/svg+xml` directly in an execution context.
 - **DOM Manipulation**: Use `textContent` and `createElement` instead of `innerHTML`, `outerHTML`, or `insertAdjacentHTML` with dynamic data.
 
 ## 2. Content Security Policy (CSP) & Dynamic Execution
-- Define an explicit, restrictive `content_security_policy.extension_pages` in `manifest.json` (e.g., `default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'`).
+- Define an explicit, restrictive `content_security_policy.extension_pages` in `manifest.json` (`default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`).
 - Never use `eval()`, `new Function()`, `setTimeout(string)`, `setInterval(string)`, or inline event handlers (`onclick="..."`).
 - Bundle all executable scripts locally inside the extension package; never load remote JavaScript or CSS.
 

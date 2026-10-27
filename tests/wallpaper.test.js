@@ -1,11 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   PRESETS,
   DEFAULT_SETTINGS,
   MAX_UPLOAD_BYTES,
-  validateWallpaperUrl,
+  validateLocalAssetPath,
   validateDataImageUrl,
   validateImageFile,
   toSafeCssUrl,
@@ -15,17 +17,27 @@ const {
   resetSettings
 } = require('../wallpaper.js');
 
-test('validateWallpaperUrl accepts valid HTTPS URLs and rejects insecure or dangerous schemes', () => {
-  const valid = validateWallpaperUrl('  https://images.unsplash.com/photo-123?w=2000  ');
-  assert.equal(valid.valid, true);
-  assert.equal(valid.value, 'https://images.unsplash.com/photo-123?w=2000');
+const ROOT = path.resolve(__dirname, '..');
 
-  assert.equal(validateWallpaperUrl('http://example.com/image.jpg').valid, false);
-  assert.equal(validateWallpaperUrl('javascript:alert(1)').valid, false);
-  assert.equal(validateWallpaperUrl('data:text/html,<script>alert(1)</script>').valid, false);
-  assert.equal(validateWallpaperUrl('file:///etc/passwd').valid, false);
-  assert.equal(validateWallpaperUrl('https://user:pass@example.com/a.jpg').valid, false);
-  assert.equal(validateWallpaperUrl('').valid, false);
+test('all image presets reference bundled local files that exist on disk', () => {
+  const imagePresets = PRESETS.filter((p) => p.type === 'image');
+  assert.ok(imagePresets.length >= 3);
+  for (const preset of imagePresets) {
+    assert.equal(preset.source, 'local');
+    assert.equal(validateLocalAssetPath(preset.value).valid, true);
+    assert.ok(
+      fs.existsSync(path.join(ROOT, preset.value)),
+      `Expected bundled preset file to exist: ${preset.value}`
+    );
+  }
+});
+
+test('validateLocalAssetPath allowlists bundled preset paths and rejects external URLs or traversal', () => {
+  assert.equal(validateLocalAssetPath('assets/presets/alpine-peaks.jpg').valid, true);
+  assert.equal(validateLocalAssetPath('https://images.unsplash.com/photo-123').valid, false);
+  assert.equal(validateLocalAssetPath('../manifest.json').valid, false);
+  assert.equal(validateLocalAssetPath('javascript:alert(1)').valid, false);
+  assert.equal(validateLocalAssetPath('').valid, false);
 });
 
 test('validateDataImageUrl accepts raster base64 images and rejects SVG/HTML payloads', () => {
@@ -53,25 +65,20 @@ test('validateImageFile enforces MIME allowlist and 10 MB size cap', () => {
   assert.equal(validateImageFile({ type: 'image/png', size: MAX_UPLOAD_BYTES + 1 }).valid, false);
 });
 
-test('toSafeCssUrl prevents CSS injection and rejects invalid schemes', () => {
-  const safe = toSafeCssUrl('https://example.com/wall("test").jpg');
-  assert.ok(safe);
-  assert.ok(safe.startsWith('url("https://example.com/'));
-
-  const unescapedQuoteAttempt = toSafeCssUrl('https://example.com/a.jpg?x=")}body{background:red}');
-  assert.ok(unescapedQuoteAttempt);
-  // Ensure raw double quotes or closing parens cannot break out of url("...")
-  const inner = unescapedQuoteAttempt.slice(5, -2);
-  assert.equal(/(?<!\\)["()]/.test(inner), false);
-
+test('toSafeCssUrl formats valid local assets and data URLs and rejects external or unsafe schemes', () => {
+  assert.equal(
+    toSafeCssUrl('assets/presets/alpine-peaks.jpg'),
+    'url("assets/presets/alpine-peaks.jpg")'
+  );
+  assert.equal(toSafeCssUrl('https://example.com/wall.jpg'), null);
   assert.equal(toSafeCssUrl('javascript:alert(1)'), null);
   assert.equal(toSafeCssUrl('data:image/svg+xml;base64,PHN2Zz4='), null);
 });
 
-test('sanitizeSettings clamps numeric ranges and falls back safely on corrupted state', () => {
+test('sanitizeSettings clamps numeric ranges, migrates legacy preset URLs, and falls back on corrupted state', () => {
   const corrupted = sanitizeSettings({
     wallpaperType: 'url',
-    wallpaperValue: 'javascript:alert(1)',
+    wallpaperValue: 'https://example.com/unavailable.jpg',
     presetId: 'non-existent-id',
     dimLevel: 999,
     blurLevel: -20,
@@ -85,20 +92,21 @@ test('sanitizeSettings clamps numeric ranges and falls back safely on corrupted 
   assert.equal(corrupted.blurLevel, 0);
   assert.equal(corrupted.fitMode, 'cover');
 
-  const validPreset = PRESETS.find((p) => p.type === 'url');
-  const valid = sanitizeSettings({
+  // Legacy v1 preset with type: 'url' and valid presetId should migrate to bundled local 'image'
+  const migrated = sanitizeSettings({
     wallpaperType: 'url',
-    wallpaperValue: validPreset.value,
-    presetId: validPreset.id,
+    wallpaperValue: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+    presetId: 'alpine-peaks',
     dimLevel: 40,
     blurLevel: 12,
     fitMode: 'contain'
   });
-  assert.equal(valid.wallpaperType, 'url');
-  assert.equal(valid.presetId, validPreset.id);
-  assert.equal(valid.dimLevel, 40);
-  assert.equal(valid.blurLevel, 12);
-  assert.equal(valid.fitMode, 'contain');
+  assert.equal(migrated.wallpaperType, 'image');
+  assert.equal(migrated.wallpaperValue, 'assets/presets/alpine-peaks.jpg');
+  assert.equal(migrated.presetId, 'alpine-peaks');
+  assert.equal(migrated.dimLevel, 40);
+  assert.equal(migrated.blurLevel, 12);
+  assert.equal(migrated.fitMode, 'contain');
 });
 
 test('storage adapter works with localStorage fallback and handles quota errors gracefully', async () => {
