@@ -47,3 +47,8 @@ npm run validate
 ```
 
 Before contributing, review [`AGENTS.md`](./AGENTS.md) and the engineering standards in [`rules/`](./rules/).
+
+
+## Development checks
+
+Use Node.js 24 LTS (`nvm use`). GitHub Actions runs `npm test` and `npm run validate` on Node 24 and 26. The extension remains offline and has no third-party runtime dependencies. No extension version is bumped by this maintenance change.

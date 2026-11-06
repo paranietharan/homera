@@ -8,6 +8,6 @@
     "validate": "node --check wallpaper.js && node --check newtab.js && node --check popup.js && node --test tests/manifest.test.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24 <27"
   }
 }
