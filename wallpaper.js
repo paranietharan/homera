@@ -343,7 +343,12 @@ async function saveSettings(partial) {
   return new Promise((resolve, reject) => {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set(merged, () => {
+        // Chrome merges top-level keys atomically. Writing only this patch preserves
+        // independent changes made by another extension view.
+        const patch = Object.fromEntries(Object.keys(partial)
+          .filter(key => Object.hasOwn(merged, key))
+          .map(key => [key, merged[key]]));
+        chrome.storage.local.set(patch, () => {
           if (chrome.runtime && chrome.runtime.lastError) {
             reject(normalizeStorageError(chrome.runtime.lastError));
             return;

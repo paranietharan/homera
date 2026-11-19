@@ -141,3 +141,24 @@ test('storage adapter works with localStorage fallback and handles quota errors 
     delete globalThis.localStorage;
   }
 });
+
+test('Chrome merges concurrent patches and reports write failures', async () => {
+  const state = { ...DEFAULT_SETTINGS };
+  globalThis.chrome = { runtime: {}, storage: { local: {
+    get: (_, done) => done({ ...state }),
+    set: (patch, done) => { Object.assign(state, patch); done(); }
+  } } };
+  try {
+    await Promise.all([saveSettings({ dimLevel: 45 }), saveSettings({ blurLevel: 8 })]);
+    assert.equal(state.dimLevel, 45);
+    assert.equal(state.blurLevel, 8);
+    chrome.storage.local.set = (_, done) => {
+      chrome.runtime.lastError = { message: 'Quota exceeded' };
+      done();
+      delete chrome.runtime.lastError;
+    };
+    await assert.rejects(saveSettings({ dimLevel: 10 }), /quota/i);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
